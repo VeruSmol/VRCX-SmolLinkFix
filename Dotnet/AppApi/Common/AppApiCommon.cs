@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NLog;
+using System.Text.RegularExpressions;
+
 
 namespace VRCX
 {
@@ -33,13 +35,60 @@ namespace VRCX
             var hash = hasher.ComputeHash(Encoding.UTF8.GetBytes(userId));
             return (hash[3] << 8) | hash[4];
         }
+        private static string smol_link_fix(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return null;
+
+            string key = null;
+
+            var matchStream = Regex.Match(
+                url,
+                @"^(rtmp|rtspt)://stream\.vrcdn\.live/live/(.+)$",
+                RegexOptions.IgnoreCase
+            );
+
+            if (matchStream.Success)
+            {
+                key = matchStream.Groups[2].Value;
+            }
+            else
+            {
+                var matchHttp = Regex.Match(
+                    url,
+                    @"^https?://stream\.vrcdn\.live/live/(.+)$",
+                    RegexOptions.IgnoreCase
+                );
+
+                if (!matchHttp.Success)
+                    return null;
+
+                key = matchHttp.Groups[1].Value;
+            }
+
+            if (key.EndsWith(".live.ts", StringComparison.OrdinalIgnoreCase))
+            {
+                key = key.Substring(0, key.Length - ".live.ts".Length);
+            }
+            else if (key.EndsWith(".ts", StringComparison.OrdinalIgnoreCase))
+            {
+                key = key.Substring(0, key.Length - ".ts".Length);
+            }
+
+            return $"https://panel.vrcdn.live/preview/{key}";
+        }
 
         public void OpenLink(string url)
         {
-            if (url.StartsWith("http://") ||
-                url.StartsWith("https://"))
+            if (string.IsNullOrWhiteSpace(url))
+                return;
+
+            var fixedUrl = smol_link_fix(url) ?? url;
+
+            if (fixedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                fixedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                Process.Start(new ProcessStartInfo(url)
+                Process.Start(new ProcessStartInfo(fixedUrl)
                 {
                     UseShellExecute = true
                 });
