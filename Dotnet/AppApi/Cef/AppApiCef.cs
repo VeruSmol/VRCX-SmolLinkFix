@@ -75,7 +75,6 @@ namespace VRCX
                 if (!string.IsNullOrEmpty(Text))
                     builder.AddText(Text);
 
-                builder.Show();
             }
             catch (System.AccessViolationException ex)
             {
